@@ -90,12 +90,11 @@ export const adminAuthApi = {
 
 // ── Transactions API ──────────────────────────────────────────────
 export const transactionApi = {
-  getAll:     ()         => api.get('/transactions'),
-  getById:    (id)       => api.get(`/transactions/${id}`),
-  create:     (data)     => api.post('/transactions', data),
-  update:     (id, data) => api.put(`/transactions/${id}`, data),
-  delete:     (id)       => api.delete(`/transactions/${id}`),
-  getSummary: ()         => api.get('/transactions/summary'),
+  getAll:  ()         => api.get('/transactions'),
+  getById: (id)       => api.get(`/transactions/${id}`),
+  create:  (data)     => api.post('/transactions', data),
+  update:  (id, data) => api.put(`/transactions/${id}`, data),
+  delete:  (id)       => api.delete(`/transactions/${id}`),
 }
 
 // ── Budget API ────────────────────────────────────────────────────
@@ -120,10 +119,11 @@ export const dashboardApi = {
 
 // ── Notifications API ─────────────────────────────────────────────
 export const notifApiRemote = {
-  getAll:   ()     => api.get('/notifications'),
-  create:   (data) => api.post('/notifications', data),
-  markRead: (id)   => api.put(`/notifications/${id}/read`),
-  readAll:  ()     => api.put('/notifications/read-all'),
+  getAll:    ()     => api.get('/notifications'),
+  create:    (data) => api.post('/notifications', data),
+  markRead:  (id)   => api.put(`/notifications/${id}/read`),
+  readAll:   ()     => api.put('/notifications/read-all'),
+  deleteAll: ()     => api.delete('/notifications'),
 }
 
 // ── Ratings API ───────────────────────────────────────────────────

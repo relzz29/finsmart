@@ -5,7 +5,9 @@ const AuthContext = createContext(null)
 
 // ── Callback untuk notifikasi ─────────────────────────────────────
 let _addNotif = null
+let _refetchNotifs = null
 export function setNotifCallback(fn) { _addNotif = fn }
+export function setRefetchCallback(fn) { _refetchNotifs = fn }
 function notify(notif) { if (_addNotif) _addNotif(notif) }
 
 export const AuthProvider = ({ children }) => {
@@ -34,6 +36,7 @@ export const AuthProvider = ({ children }) => {
       const data = await authApi.login(email, password)
       setToken(data.token)
       setUser(data.user)
+      if (_refetchNotifs) _refetchNotifs()
       notify({ type: 'login', title: 'Login Berhasil 👋', body: `Selamat datang, ${data.user?.name}!` })
       return { success: true }
     } catch (err) {
@@ -46,6 +49,7 @@ export const AuthProvider = ({ children }) => {
       const data = await authApi.register({ name, email, password })
       setToken(data.token)
       setUser(data.user)
+      if (_refetchNotifs) _refetchNotifs()
       notify({ type: 'register', title: 'Akun Berhasil Dibuat! 🎉', body: `${name} bergabung dengan FinSmart` })
       return { success: true }
     } catch (err) {

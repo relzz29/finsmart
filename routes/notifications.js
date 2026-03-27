@@ -27,6 +27,13 @@ router.put('/read-all', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ message: 'Terjadi kesalahan server.' }) }
 })
 
+router.delete('/', authMiddleware, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM notifications WHERE user_id = ?', [req.user.id])
+    res.json({ success: true })
+  } catch (err) { res.status(500).json({ message: 'Gagal menghapus notifikasi.' }) }
+})
+
 router.put('/:id/read', authMiddleware, async (req, res) => {
   try {
     await pool.query('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?', [req.params.id, req.user.id])

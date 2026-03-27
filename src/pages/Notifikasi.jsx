@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useNotifications } from '../hooks/useNotifications'
 import BottomNav from '../components/BottomNav'
 
+
 const ICONS = {
   register:    { icon: '🎉', color: '#7C3AED', bg: '#EDE9FE' },
   transaction: { icon: '💸', color: '#059669', bg: '#D1FAE5' },
@@ -54,7 +55,7 @@ function groupByDate(notifs) {
 
 export default function Notifikasi() {
   const navigate = useNavigate()
-  const { notifs, markRead, markAllRead, clearAll, unreadCount } = useNotifications()
+  const { notifs, markRead, markAllRead, clearAll, unreadCount, synced } = useNotifications()
   const [activeFilter, setActiveFilter] = useState('all')
   const [showConfirmClear, setShowConfirmClear] = useState(false)
   const [swipedId, setSwipedId] = useState(null)
@@ -100,6 +101,9 @@ export default function Notifikasi() {
               {unreadCount > 0 && (
                 <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 2 }}>{unreadCount} belum dibaca</p>
               )}
+              <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 1 }}>
+                {synced ? '✓ tersinkron dengan server' : '○ mode offline (cache lokal)'}
+              </p>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {unreadCount > 0 && (

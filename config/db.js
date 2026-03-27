@@ -11,6 +11,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   charset: 'utf8mb4',
+  timezone: '+07:00',  // WIB — pastikan Node dan MySQL pakai timezone yang sama
 })
 
 export async function initDB() {

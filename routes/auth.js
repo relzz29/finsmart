@@ -134,10 +134,28 @@ router.get('/me', authMiddleware, async (req, res) => {
       'SELECT id, name, email, avatar, role, created_at FROM users WHERE id = ?', [req.user.id]
     )
     if (rows.length === 0) return res.status(404).json({ message: 'User tidak ditemukan.' })
-    const [txCount]  = await pool.query('SELECT COUNT(*) as count FROM transactions WHERE user_id = ?', [req.user.id])
-    const [artCount] = await pool.query('SELECT COUNT(*) as count FROM articles')
+
+    const [[{ count: txCount }], [{ count: artCount }], [budgetCats]] = await Promise.all([
+      pool.query('SELECT COUNT(*) as count FROM transactions WHERE user_id = ?', [req.user.id]),
+      pool.query('SELECT COUNT(*) as count FROM articles'),
+      pool.query(
+        `SELECT
+           COUNT(*) AS total,
+           SUM(CASE WHEN used <= total AND total > 0 THEN 1 ELSE 0 END) AS ok
+         FROM budget_categories bc
+         JOIN budgets b ON bc.budget_id = b.id
+         WHERE b.user_id = ?`,
+        [req.user.id]
+      ),
+    ])
+
+    // budgetOk = persentase kategori yang masih dalam batas; 100 jika belum ada budget
+    const budgetOk = budgetCats.total > 0
+      ? Math.round((budgetCats.ok / budgetCats.total) * 100)
+      : 100
+
     const user = rows[0]
-    user.stats = { transactions: txCount[0].count, articles: artCount[0].count }
+    user.stats = { transactions: txCount, articles: artCount, budgetOk }
     res.json({ user })
   } catch (err) {
     console.error(err)

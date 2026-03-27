@@ -39,8 +39,8 @@ export default function Transactions() {
   useEffect(() => { load() }, [])
 
   const filtered = filter === 'semua' ? txs : txs.filter(t => t.type === filter)
-  const totalIn  = txs.filter(t => t.type === 'masuk').reduce((a, t) => a + t.amount, 0)
-  const totalOut = Math.abs(txs.filter(t => t.type === 'keluar').reduce((a, t) => a + t.amount, 0))
+  const totalIn  = txs.filter(t => t.type === 'masuk').reduce((a, t) => a + Number(t.amount), 0)
+  const totalOut = Math.abs(txs.filter(t => t.type === 'keluar').reduce((a, t) => a + Number(t.amount), 0))
   const groups   = groupByDate(filtered)
 
   return (
@@ -61,11 +61,11 @@ export default function Transactions() {
         <div style={{ padding:'0 var(--page-padding) 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
           <div style={{ background:'var(--success-light)', borderRadius:'var(--radius-sm)', padding:'clamp(12px,3vw,16px)' }}>
             <div style={{ color:'var(--success)', fontSize:12, fontWeight:700 }}>Pemasukan</div>
-            <div style={{ color:'var(--success)', fontSize:'clamp(16px,4vw,20px)', fontWeight:900, marginTop:4 }}>+{(totalIn/1000000).toFixed(1).replace('.', ',')}Jt</div>
+            <div style={{ color:'var(--success)', fontSize:'clamp(16px,4vw,20px)', fontWeight:900, marginTop:4 }}>+Rp {totalIn.toLocaleString('id-ID')}</div>
           </div>
           <div style={{ background:'var(--danger-light)', borderRadius:'var(--radius-sm)', padding:'clamp(12px,3vw,16px)' }}>
             <div style={{ color:'var(--danger)', fontSize:12, fontWeight:700 }}>Pengeluaran</div>
-            <div style={{ color:'var(--danger)', fontSize:'clamp(16px,4vw,20px)', fontWeight:900, marginTop:4 }}>-{(totalOut/1000000).toFixed(1).replace('.', ',')}Jt</div>
+            <div style={{ color:'var(--danger)', fontSize:'clamp(16px,4vw,20px)', fontWeight:900, marginTop:4 }}>-Rp {totalOut.toLocaleString('id-ID')}</div>
           </div>
         </div>
 

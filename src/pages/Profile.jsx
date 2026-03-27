@@ -38,6 +38,7 @@ export default function Profile() {
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(user?.name || '')
+  const [saving, setSaving] = useState(false)
   const [showKeamanan, setShowKeamanan] = useState(false)
   const [keamananStep, setKeamananStep] = useState('menu')
 
@@ -45,7 +46,22 @@ export default function Profile() {
   useEffect(() => { addCurrentDevice() }, [])
 
   const handleLogout = () => { logout(); navigate('/'); toast('Sampai jumpa! 👋', 'success') }
-  const handleSave   = () => { updateUser({ name }); setEditing(false); toast('Profil diperbarui ✅', 'success') }
+  const handleSave   = async () => {
+    const trimmed = name.trim()
+    if (!trimmed) { toast('Nama tidak boleh kosong', 'error'); return }
+    if (trimmed === user?.name) { setEditing(false); return }
+    setSaving(true)
+    try {
+      const data = await authApi.updateProfile({ name: trimmed })
+      updateUser(data.user)
+      setEditing(false)
+      toast('Profil diperbarui ✅', 'success')
+    } catch (err) {
+      toast(err.message || 'Gagal menyimpan profil', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const closeKeamanan = () => { setShowKeamanan(false); setKeamananStep('menu') }
 
@@ -72,9 +88,9 @@ export default function Profile() {
           <p style={{ color:'rgba(255,255,255,0.7)', fontSize:'clamp(12px,3vw,14px)' }}>{user?.email || 'nama@email.com'}</p>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, marginTop:20 }}>
             {[
-              { label:'Transaksi', value: user?.stats?.transactions || 128, color:'white' },
-              { label:'Budget OK', value: `${user?.stats?.budgetOk || 89}%`, color:'#86EFAC' },
-              { label:'Artikel',   value: user?.stats?.articles || 12,       color:'#FDE68A' },
+              { label:'Transaksi', value: user?.stats?.transactions ?? '—', color:'white' },
+              { label:'Budget OK', value: user?.stats?.budgetOk != null ? `${user.stats.budgetOk}%` : '—', color:'#86EFAC' },
+              { label:'Artikel',   value: user?.stats?.articles ?? '—',       color:'#FDE68A' },
             ].map(s => (
               <div key={s.label} style={{ background:'rgba(255,255,255,0.15)', borderRadius:'var(--radius-sm)', padding:'clamp(10px,3vw,14px) 8px' }}>
                 <div style={{ color:s.color, fontWeight:900, fontSize:'clamp(18px,5vw,24px)', fontFamily:'var(--font-display)' }}>{s.value}</div>
@@ -93,8 +109,10 @@ export default function Profile() {
               <input className="input-field" value={name} onChange={e => setName(e.target.value)}/>
             </div>
             <div className="flex gap-8">
-              <button className="btn btn-primary" style={{ flex:1 }} onClick={handleSave}>Simpan ✓</button>
-              <button className="btn btn-outline" style={{ flex:1 }} onClick={() => setEditing(false)}>Batal</button>
+              <button className="btn btn-primary" style={{ flex:1 }} onClick={handleSave} disabled={saving}>
+                {saving ? 'Menyimpan...' : 'Simpan ✓'}
+              </button>
+              <button className="btn btn-outline" style={{ flex:1 }} onClick={() => setEditing(false)} disabled={saving}>Batal</button>
             </div>
           </div>
         )}

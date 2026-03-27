@@ -104,6 +104,22 @@ INSERT INTO articles (title, category, read_time, image, bg_color) VALUES
 ('Tips Hemat Belanja Bulanan',                  'BUDGETING', 5, '🛒', '#ECFDF5'),
 ('Memahami Dana Darurat dan Cara Menabungnya',  'TABUNGAN',  6, '🆘', '#FEF3C7');
 
+-- Tabel simulations
+CREATE TABLE IF NOT EXISTS simulations (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  user_id       INT           NOT NULL,
+  label         VARCHAR(150)  DEFAULT NULL,
+  modal         DECIMAL(15,2) NOT NULL,
+  monthly       DECIMAL(15,2) NOT NULL,
+  rate          DECIMAL(5,2)  NOT NULL,
+  years         INT           NOT NULL,
+  result_total  DECIMAL(15,2) NOT NULL,
+  result_profit DECIMAL(15,2) NOT NULL,
+  result_pct    DECIMAL(7,2)  NOT NULL,
+  created_at    DATETIME      DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ============================================================
 --  Selesai! Database finsmart_db siap digunakan.
 -- ============================================================

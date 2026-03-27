@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { AuthProvider, useAuth, setNotifCallback } from './hooks/useAuth'
+import { AuthProvider, useAuth, setNotifCallback, setRefetchCallback } from './hooks/useAuth'
 import { ToastProvider } from './hooks/useToast'
 import { NotifProvider, useNotifications } from './hooks/useNotifications'
 import { logoBase64 } from './assets/logo'
@@ -57,11 +57,12 @@ function AdminRoute({ children }) {
 
 // ── Bridge notif ─────────────────────────────────────────────────────
 function NotifBridge() {
-  const { addNotif } = useNotifications()
+  const { addNotif, refetch } = useNotifications()
   useEffect(() => {
     setNotifCallback(addNotif)
-    return () => setNotifCallback(null)
-  }, [addNotif])
+    setRefetchCallback(refetch)
+    return () => { setNotifCallback(null); setRefetchCallback(null) }
+  }, [addNotif, refetch])
   return null
 }
 

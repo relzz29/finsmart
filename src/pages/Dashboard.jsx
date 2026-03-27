@@ -9,11 +9,7 @@ import NotifPanel from '../components/NotifPanel'
 import { useNotifications } from '../hooks/useNotifications'
 import { logoBase64 } from '../assets/logo'
 
-const fmt = (n) => {
-  if (Math.abs(n) >= 1000000) return `Rp ${(n/1000000).toFixed(1).replace('.', ',')}Jt`
-  if (Math.abs(n) >= 1000) return `Rp ${(n/1000).toFixed(0)}Rb`
-  return `Rp ${n.toLocaleString('id-ID')}`
-}
+const fmt = (n) => `Rp ${Number(n).toLocaleString('id-ID')}`
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -26,33 +22,40 @@ export default function Dashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        // Load transactions from localStorage (always available)
-        const txResult = await transactionApi.getAll()
-        const allTxs = txResult.transactions || []
+        // Fetch summary, recent transactions, dan chart data secara paralel
+        const [summaryRes, txRes, chartRes] = await Promise.allSettled([
+          dashboardApi.getSummary(),
+          transactionApi.getAll(),
+          dashboardApi.getChartData(),
+        ])
 
-        // Try to get chart data from API, fallback to mock
+        // Summary — dari endpoint /dashboard/summary
+        const summary = summaryRes.status === 'fulfilled' ? summaryRes.value : null
+        const income  = summary ? parseFloat(summary.income)  : 0
+        const expense = summary ? parseFloat(summary.expense) : 0
+        const balance = summary ? parseFloat(summary.balance) : 0
+
+        // Recent transactions — ambil 4 terbaru untuk ditampilkan
+        const allTxs = txRes.status === 'fulfilled' ? (txRes.value.transactions || []) : []
+
+        // Chart — fallback ke mock jika endpoint gagal atau data kosong
         let chart = mockChartData
-        try {
-          const chartRes = await dashboardApi.getChartData()
-          chart = chartRes.data || mockChartData
-        } catch { /* use mock */ }
-
-        // Compute summary from real transactions
-        const income  = allTxs.filter(t => t.type === 'masuk').reduce((a, t) => a + t.amount, 0)
-        const expense = Math.abs(allTxs.filter(t => t.type === 'keluar').reduce((a, t) => a + t.amount, 0))
-        const balance = income - expense
+        if (chartRes.status === 'fulfilled') {
+          const parsed = (chartRes.value.chartData || []).map(d => ({ ...d, amount: Number(d.amount) }))
+          if (parsed.length) chart = parsed
+        }
 
         setData({
-          balance: balance || 0,
-          income: income || 0,
-          expense: expense || 0,
+          balance,
+          income,
+          expense,
           chart,
           recentTransactions: allTxs.slice(0, 4),
         })
       } catch {
-        // Full fallback to mock
+        // Full fallback ke mock
         const totalIn  = mockTransactions.filter(t => t.type === 'masuk').reduce((a, t) => a + t.amount, 0)
-        const totalOut = Math.abs(mockTransactions.filter(t => t.type === 'keluar').reduce((a, t) => a + t.amount, 0))
+        const totalOut = mockTransactions.filter(t => t.type === 'keluar').reduce((a, t) => a + t.amount, 0)
         setData({ balance: 4250000, income: totalIn, expense: totalOut, chart: mockChartData, recentTransactions: mockTransactions.slice(0, 4) })
       } finally {
         setLoading(false)
@@ -244,7 +247,7 @@ function TxRow({ tx }) {
       </div>
       <div style={{ textAlign:'right', flexShrink:0 }}>
         <div style={{ fontWeight:800, fontSize:14, color: isOut ? 'var(--danger)' : 'var(--success)' }}>
-          {isOut ? '-' : '+'}Rp {Math.abs(tx.amount).toLocaleString('id-ID')}
+          {isOut ? '-' : '+'}Rp {Math.abs(Number(tx.amount)).toLocaleString('id-ID')}
         </div>
         <div style={{ color:'var(--text-muted)', fontSize:11, marginTop:1 }}>
           {new Date(tx.date).toLocaleDateString('id-ID', { day:'numeric', month:'short' })}
