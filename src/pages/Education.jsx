@@ -1,341 +1,287 @@
 import React, { useState, useEffect } from 'react'
-import { educationApi } from '../api'
-import { mockArticles } from '../api/mockData'
+import { useNavigate } from 'react-router-dom'
+import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip } from 'recharts'
+import { useAuth } from '../hooks/useAuth'
+import { dashboardApi, transactionApi } from '../api'
+import { mockChartData, mockTransactions } from '../api/mockData'
 import BottomNav from '../components/BottomNav'
+import NotifPanel from '../components/NotifPanel'
+import { useNotifications } from '../hooks/useNotifications'
+import { logoBase64 } from '../assets/logo'
 
-const filters = ['Semua', 'Investasi', 'Tabungan', 'Budgeting', 'Pay Later']
+const fmt = (n) => `Rp ${Number(n).toLocaleString('id-ID')}`
 
-// Extended article content
-const articleContent = {
-  '1': {
-    content: `Memulai investasi tidak harus menunggu punya banyak uang. Dengan Rp 100.000 per bulan saja, kamu sudah bisa mulai membangun kekayaan jangka panjang.
-
-**Kenapa Mulai Sekarang?**
-Waktu adalah aset terbesar dalam investasi. Berkat bunga majemuk (compound interest), uang kecil yang diinvestasikan lebih awal bisa tumbuh jauh lebih besar dibanding uang besar yang diinvestasikan terlambat.
-
-**Pilihan Investasi Rp 100rb/Bulan:**
-
-1. **Reksa Dana Pasar Uang** — Risiko rendah, bisa ditarik kapan saja. Cocok untuk pemula.
-2. **Reksa Dana Indeks** — Mengikuti pergerakan IHSG, return jangka panjang yang baik.
-3. **Emas Digital** — Lindung nilai inflasi, beli mulai 0.01 gram.
-4. **Saham Dividen** — Pilih perusahaan besar dengan track record bagus.
-
-**Tips Investasi Rutin:**
-• Otomatiskan transfer setiap tanggal gajian
-• Jangan lihat portofolio setiap hari
-• Pelajari instrumen sebelum menaruh uang lebih besar
-• Diversifikasi untuk mengurangi risiko
-
-Ingat: investasi terbaik adalah yang dimulai hari ini!`,
-    readTime: 5,
-    tags: ['Pemula', 'Reksa Dana', 'Emas', 'Saham']
-  },
-  '2': {
-    content: `Pay Later atau Beli Sekarang Bayar Nanti sudah jadi bagian dari gaya hidup modern. Tapi tahukah kamu risikonya?
-
-**Cara Kerja Pay Later**
-Pay Later pada dasarnya adalah hutang jangka pendek. Kamu belanja sekarang, bayar nanti—biasanya dalam 30 hari atau cicilan.
-
-**Bahayanya Jika Tidak Bijak:**
-
-1. **Hutang Menumpuk** — Mudah tergoda beli terus, tagihan menumpuk tanpa disadari
-2. **Bunga Tinggi** — Keterlambatan bayar bisa kena bunga 2-3% per bulan (24-36% per tahun!)
-3. **FOMO Belanja** — Kemudahan akses mendorong pembelian impulsif
-4. **Merusak Skor Kredit** — Gagal bayar berdampak pada riwayat kredit jangka panjang
-
-**Aturan Bijak Pakai Pay Later:**
-• Hanya untuk kebutuhan mendesak, bukan keinginan
-• Pastikan ada dana untuk melunasinya sebelum jatuh tempo
-• Catat semua transaksi pay later
-• Matikan fitur jika tidak bisa disiplin
-• Jangan lebih dari 10-15% dari penghasilan
-
-Pay Later bukan musuh—tapi butuh disiplin tinggi untuk menggunakannya!`,
-    readTime: 4,
-    tags: ['Pay Later', 'Hutang', 'Keuangan Sehat']
-  },
-  '3': {
-    content: `Metode 50/30/20 adalah salah satu cara termudah untuk mengatur keuangan pribadi tanpa harus jadi ahli keuangan.
-
-**Apa itu 50/30/20?**
-Bagi penghasilanmu menjadi tiga bagian:
-
-**50% — Kebutuhan (Needs)**
-Pengeluaran yang wajib dan tidak bisa dihindari:
-• Sewa/cicilan rumah atau kos
-• Makanan & groceries
-• Transportasi
-• Tagihan listrik, air, internet
-• Cicilan yang sudah ada
-
-**30% — Keinginan (Wants)**
-Pengeluaran untuk menikmati hidup:
-• Hiburan, nonton, ngopi
-• Belanja pakaian, aksesoris
-• Makan di restoran
-• Liburan & hobi
-
-**20% — Tabungan & Investasi (Savings)**
-• Dana darurat (target 3-6x pengeluaran bulanan)
-• Investasi jangka panjang
-• Pelunasan hutang (selain cicilan wajib)
-
-**Contoh dengan Gaji Rp 5.000.000:**
-• Kebutuhan: Rp 2.500.000
-• Keinginan: Rp 1.500.000
-• Tabungan: Rp 1.000.000
-
-Mulai terapkan minggu ini dan lihat perubahan keuanganmu dalam 3 bulan!`,
-    readTime: 7,
-    tags: ['Budgeting', '50/30/20', 'Tabungan']
-  },
-  '4': {
-    content: `Menabung Rp 1 juta per bulan bisa terasa mustahil—tapi dengan strategi yang tepat, ini sangat mungkin dilakukan bahkan dengan gaji UMR.
-
-**Strategi Pay Yourself First**
-Langsung transfer ke rekening tabungan di hari gajian. Jangan tunggu sisa. Ini prinsip paling penting dalam menabung.
-
-**5 Cara Praktis Nabung Rp 1 Juta/Bulan:**
-
-1. **Tantangan 52 Minggu** — Minggu 1 nabung Rp 10rb, minggu 2 Rp 20rb, dst. Total setahun hampir Rp 14 juta!
-
-2. **Metode Amplop** — Pisahkan uang tunai di amplop berlabel (makan, transport, jajan). Bila amplop habis, stop belanja.
-
-3. **Kurangi 1 Kebiasaan Mahal** — Kopi kafe tiap hari = Rp 2 juta/bulan. Buat sendiri dan hemat Rp 1,5 juta.
-
-4. **Jual Barang Tidak Terpakai** — Baju lama, gadget bekas, buku = tambahan tabungan.
-
-5. **Cari Penghasilan Tambahan** — Freelance, jualan online, ojek online di waktu senggang.
-
-**Rekening Terpisah = Kunci Sukses**
-Buka rekening khusus tabungan yang tidak punya kartu ATM. "Out of sight, out of mind."
-
-Konsistensi lebih penting dari jumlah. Mulai dari Rp 100rb pun tidak apa-apa!`,
-    readTime: 6,
-    tags: ['Tabungan', 'Tips', 'Disiplin Keuangan']
-  },
-  '5': {
-    content: `Reksa dana vs saham — pertanyaan yang sering ditanyakan investor pemula. Mari kita bedah perbedaannya!
-
-**Reksa Dana: Investasi Kolektif**
-Uangmu digabung dengan investor lain, lalu dikelola manajer investasi profesional.
-
-✅ **Keuntungan Reksa Dana:**
-• Diversifikasi otomatis (risiko tersebar)
-• Tidak perlu analisis mendalam
-• Modal kecil (mulai Rp 10.000)
-• Cocok untuk pemula
-• Ada manajer investasi yang urus
-
-❌ **Kekurangan Reksa Dana:**
-• Ada biaya pengelolaan (expense ratio)
-• Return biasanya lebih rendah dari saham langsung
-• Tidak bisa kontrol portofolio sepenuhnya
-
-**Saham: Kepemilikan Langsung**
-Kamu langsung membeli sebagian kepemilikan perusahaan.
-
-✅ **Keuntungan Saham:**
-• Potensi return lebih tinggi
-• Dapat dividen langsung
-• Kendali penuh atas portofolio
-• Transparan—bisa analisis sendiri
-
-❌ **Kekurangan Saham:**
-• Butuh pengetahuan lebih dalam
-• Risiko lebih tinggi
-• Perlu waktu untuk monitoring
-• Butuh modal lebih besar untuk diversifikasi
-
-**Mana yang Lebih Baik?**
-Tidak ada jawaban mutlak. Kombinasi keduanya adalah strategi terbaik!
-• Pemula → Mulai dengan reksa dana
-• Sudah berpengalaman → Tambahkan saham
-• Dana darurat → Jangan diinvestasikan
-
-Kunci terpenting: mulai lebih awal dan konsisten!`,
-    readTime: 8,
-    tags: ['Investasi', 'Reksa Dana', 'Saham', 'Perbandingan']
-  }
-}
-
-export default function Education() {
-  const [articles, setArticles] = useState([])
+export default function Dashboard() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('Semua')
-  const [search, setSearch] = useState('')
-  const [selectedArticle, setSelectedArticle] = useState(null)
+  const [showNotif, setShowNotif] = useState(false)
+  // Flag: true kalau sebagian/seluruh data berasal dari mock
+  const [isMock, setIsMock] = useState(false)
+  const { unreadCount } = useNotifications()
 
   useEffect(() => {
-    educationApi.getArticles()
-      .then(d => setArticles(d.articles || []))
-      .catch(() => setArticles(mockArticles))
-      .finally(() => setLoading(false))
+    const load = async () => {
+      try {
+        // Fetch summary, recent transactions, dan chart data secara paralel
+        const [summaryRes, txRes, chartRes] = await Promise.allSettled([
+          dashboardApi.getSummary(),
+          transactionApi.getAll(),
+          dashboardApi.getChartData(),
+        ])
+
+        // Cek apakah ada endpoint yang gagal
+        const adaYangGagal =
+          summaryRes.status === 'rejected' ||
+          txRes.status === 'rejected' ||
+          chartRes.status === 'rejected'
+
+        // Summary — dari endpoint /dashboard/summary
+        const summary = summaryRes.status === 'fulfilled' ? summaryRes.value : null
+        const income  = summary ? parseFloat(summary.income)  : 0
+        const expense = summary ? parseFloat(summary.expense) : 0
+        const balance = summary ? parseFloat(summary.balance) : 0
+
+        // Recent transactions — ambil 4 terbaru untuk ditampilkan
+        const allTxs = txRes.status === 'fulfilled' ? (txRes.value.transactions || []) : []
+
+        // Chart — fallback ke mock jika endpoint gagal atau data kosong
+        let chart = mockChartData
+        if (chartRes.status === 'fulfilled') {
+          const parsed = (chartRes.value.chartData || []).map(d => ({ ...d, amount: Number(d.amount) }))
+          if (parsed.length) chart = parsed
+        }
+
+        // Tampilkan warning kalau ada data yang fallback ke mock
+        if (adaYangGagal) setIsMock(true)
+
+        setData({
+          balance,
+          income,
+          expense,
+          chart,
+          recentTransactions: allTxs.slice(0, 4),
+        })
+      } catch {
+        // Full fallback ke mock — tandai sebagai mock
+        setIsMock(true)
+        const totalIn  = mockTransactions.filter(t => t.type === 'masuk').reduce((a, t) => a + t.amount, 0)
+        const totalOut = mockTransactions.filter(t => t.type === 'keluar').reduce((a, t) => a + t.amount, 0)
+        setData({ balance: 4250000, income: totalIn, expense: totalOut, chart: mockChartData, recentTransactions: mockTransactions.slice(0, 4) })
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
-  const filtered = articles.filter(a => {
-    const mF = filter === 'Semua' || a.category.toLowerCase().includes(filter.toLowerCase())
-    const mS = !search || a.title.toLowerCase().includes(search.toLowerCase())
-    return mF && mS
-  })
+  const recentTx = data?.recentTransactions || []
 
   return (
     <div className="app-shell">
       <div className="page">
 
-        <div style={{ padding:'clamp(40px,8vw,52px) var(--page-padding) 16px' }}>
-          <h1 className="page-title">Edukasi 🧠</h1>
-          <p style={{ color:'var(--text-muted)', fontSize:13, marginTop:4 }}>Tingkatkan literasi keuanganmu</p>
-        </div>
+        {/* ── HERO HEADER ── */}
+        <div style={{
+          background: 'linear-gradient(140deg, #7C3AED 0%, #A855F7 55%, #EC4899 100%)',
+          padding: 'clamp(40px, 8vw, 56px) var(--page-padding) 28px',
+          borderRadius: '0 0 var(--radius-xl) var(--radius-xl)',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          {/* Decorative circles */}
+          <span style={{ position:'absolute', top:-40, right:-40, width:180, height:180, borderRadius:'50%', background:'rgba(255,255,255,0.06)', pointerEvents:'none' }}/>
+          <span style={{ position:'absolute', bottom:-30, left:10, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.04)', pointerEvents:'none' }}/>
 
-        {/* Search */}
-        <div style={{ padding:'0 var(--page-padding) 12px' }}>
-          <input
-            className="input-field"
-            placeholder="🔍 Cari artikel..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ background:'white' }}
-          />
-        </div>
-
-        {/* Filter */}
-        <div className="chip-row" style={{ padding:'0 var(--page-padding) 16px' }}>
-          {filters.map(f => (
-            <button key={f} className={`chip ${filter===f?'active':''}`} onClick={() => setFilter(f)}>{f}</button>
-          ))}
-        </div>
-
-        {/* Articles */}
-        <div style={{ padding:'0 var(--page-padding)' }}>
-          {loading
-            ? [1,2,3].map(i => <div key={i} className="skeleton" style={{ height:88, marginBottom:12, borderRadius:'var(--radius)' }}/>)
-            : filtered.length === 0
-              ? <div className="empty-state"><div className="emoji">📭</div><p style={{ fontWeight:700 }}>Artikel tidak ditemukan</p></div>
-              : filtered.map(a => <ArticleCard key={a.id} article={a} onOpen={() => setSelectedArticle(a)}/>)
-          }
-        </div>
-        <div style={{ height:20 }}/>
-      </div>
-      <BottomNav/>
-
-      {/* Full Article Modal */}
-      {selectedArticle && (
-        <div style={{ position:'fixed', inset:0, background:'white', zIndex:1000, display:'flex', flexDirection:'column', animation:'fadeIn 0.2s ease', maxWidth:'var(--shell-width)', margin:'0 auto' }}>
-          {/* Header */}
-          <div style={{ padding:'20px var(--page-padding) 16px', borderBottom:'1px solid var(--border-light)', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
-            <button onClick={() => setSelectedArticle(null)} style={{ background:'var(--border-light)', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              ‹
-            </button>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:11, fontWeight:800, color:'var(--primary)', letterSpacing:'0.06em', marginBottom:2 }}>{selectedArticle.category}</div>
-              <div style={{ fontWeight:800, fontSize:14, color:'var(--text)', lineHeight:1.3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{selectedArticle.title}</div>
-            </div>
-          </div>
-
-          {/* Scrollable Content */}
-          <div style={{ flex:1, overflowY:'auto', padding:'0 var(--page-padding) 40px' }}>
-
-            {/* Hero */}
-            <div style={{ margin:'20px 0', background: selectedArticle.bg || 'var(--primary-xlight)', borderRadius:'var(--radius)', padding:'28px 24px', display:'flex', alignItems:'center', gap:16 }}>
-              <span style={{ fontSize:52 }}>{selectedArticle.image}</span>
+          {/* Top bar */}
+          <div className="flex justify-between items-center" style={{ marginBottom: 24, position: 'relative' }}>
+            <div className="flex items-center gap-12">
+              <div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(255,255,255,0.95)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden', boxShadow:'0 2px 10px rgba(0,0,0,0.15)' }}>
+                  <img src={logoBase64} alt="FinSmart" style={{ width:40, height:40, objectFit:'contain' }}/>
+                </div>
               <div>
-                <h1 style={{ fontSize:18, fontWeight:900, fontFamily:'var(--font-display)', color:'var(--text)', lineHeight:1.3, marginBottom:8 }}>{selectedArticle.title}</h1>
-                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                  <span style={{ background:'rgba(124,58,237,0.12)', color:'var(--primary)', fontSize:11, fontWeight:800, padding:'3px 10px', borderRadius:20 }}>
-                    ⏱ {selectedArticle.readTime} menit baca
-                  </span>
-                  <span style={{ background:'rgba(0,0,0,0.06)', color:'var(--text-muted)', fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:20 }}>
-                    {selectedArticle.daysAgo} hari lalu
-                  </span>
+                <div style={{ color:'white', fontWeight:800, fontSize:'clamp(15px,4vw,18px)', fontFamily:'var(--font-display)' }}>
+                  Halo, {user?.name || 'Pengguna'}! 👋
                 </div>
               </div>
             </div>
+            <button
+              onClick={() => setShowNotif(true)}
+              style={{ width:40, height:40, borderRadius:'50%', background:'rgba(255,255,255,0.2)', border:'none', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative' }}
+            >
+              🔔
+              {unreadCount > 0 && (
+                <span style={{
+                  position:'absolute', top:6, right:6,
+                  width:8, height:8, borderRadius:'50%',
+                  background:'#F43F5E',
+                  border:'2px solid #7C3AED',
+                  display:'block',
+                }}/>
+              )}
+            </button>
+          </div>
 
-            {/* Tags */}
-            {articleContent[selectedArticle.id]?.tags && (
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:20 }}>
-                {articleContent[selectedArticle.id].tags.map(tag => (
-                  <span key={tag} style={{ background:'var(--border-light)', color:'var(--text-muted)', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>#{tag}</span>
-                ))}
+          {/* Balance */}
+          <div className="text-center" style={{ position:'relative' }}>
+            <div style={{ color:'rgba(255,255,255,0.75)', fontSize:13, marginBottom:6, fontWeight:500 }}>Total Saldo</div>
+            {loading
+              ? <div className="skeleton" style={{ height:48, width:'60%', margin:'0 auto 10px', background:'rgba(255,255,255,0.2)', borderRadius:12 }}/>
+              : <div style={{ color:'white', fontSize:'clamp(28px, 8vw, 40px)', fontWeight:900, letterSpacing:'-0.02em', marginBottom:10, fontFamily:'var(--font-display)' }}>
+                  Rp {(data?.balance || 0).toLocaleString('id-ID')}
+                </div>
+            }
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.15)', borderRadius:50, padding:'5px 14px' }}>
+              <span style={{ color:'#86EFAC', fontSize:13, fontWeight:700 }}>▲ 12,4% bulan ini</span>
+            </span>
+          </div>
+
+          {/* Income / Expense */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:22 }}>
+            {[
+              { label:'Pemasukan', val: data?.income || 6500000, color:'#86EFAC', arrow:'↑' },
+              { label:'Pengeluaran', val: data?.expense || 2200000, color:'#FCA5A5', arrow:'↓' },
+            ].map(item => (
+              <div key={item.label} style={{ background:'rgba(255,255,255,0.15)', borderRadius:var_or(14), padding:'14px clamp(12px,3vw,18px)', backdropFilter:'blur(8px)' }}>
+                <div style={{ color:'rgba(255,255,255,0.7)', fontSize:'clamp(11px,2.5vw,12px)', marginBottom:4 }}>{item.label}</div>
+                <div style={{ color:item.color, fontWeight:800, fontSize:'clamp(14px,4vw,18px)' }}>
+                  {item.arrow} {fmt(item.val)}
+                </div>
               </div>
-            )}
-
-            {/* Article Body */}
-            <div style={{ lineHeight:1.8, fontSize:14, color:'var(--text)' }}>
-              {(articleContent[selectedArticle.id]?.content || `Artikel ini membahas tentang ${selectedArticle.title.toLowerCase()}. Dengan memahami konsep ini, kamu bisa mengelola keuangan dengan lebih cerdas dan mencapai tujuan finansialmu lebih cepat.\n\nTerus pelajari literasi keuangan untuk masa depan yang lebih cerah! 💪`)
-                .split('\n\n')
-                .map((paragraph, i) => {
-                  if (paragraph.startsWith('**') && paragraph.endsWith('**')) {
-                    const text = paragraph.slice(2, -2)
-                    return <h3 key={i} style={{ fontWeight:900, fontSize:16, fontFamily:'var(--font-display)', marginTop:24, marginBottom:8, color:'var(--text)' }}>{text}</h3>
-                  }
-                  // Render bold inline text
-                  const parts = paragraph.split(/(\*\*[^*]+\*\*)/)
-                  return (
-                    <p key={i} style={{ marginBottom:14 }}>
-                      {parts.map((part, j) => {
-                        if (part.startsWith('**') && part.endsWith('**')) {
-                          return <strong key={j}>{part.slice(2,-2)}</strong>
-                        }
-                        // Handle bullet points
-                        if (part.includes('\n•')) {
-                          return part.split('\n').map((line, k) => {
-                            if (line.startsWith('•')) {
-                              return <div key={k} style={{ display:'flex', gap:8, marginBottom:6 }}><span style={{ color:'var(--primary)', flexShrink:0 }}>•</span><span>{line.slice(1).trim()}</span></div>
-                            }
-                            if (line.match(/^\d+\./)) {
-                              return <div key={k} style={{ display:'flex', gap:8, marginBottom:8 }}><span style={{ color:'var(--primary)', fontWeight:800, flexShrink:0 }}>{line.match(/^\d+/)[0]}.</span><span>{line.replace(/^\d+\./, '').trim()}</span></div>
-                            }
-                            return line ? <span key={k}>{line}{k < part.split('\n').length - 1 ? '\n' : ''}</span> : null
-                          })
-                        }
-                        return <span key={j}>{part}</span>
-                      })}
-                    </p>
-                  )
-                })}
-            </div>
-
-            {/* Share / Bookmark */}
-            <div style={{ display:'flex', gap:10, marginTop:28 }}>
-              <button
-                onClick={() => { navigator.share ? navigator.share({ title: selectedArticle.title, text: 'Baca artikel keuangan ini!' }) : navigator.clipboard?.writeText(window.location.href).then(() => alert('Link disalin!')) }}
-                style={{ flex:1, padding:14, background:'var(--border-light)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', fontWeight:700, fontSize:14, display:'flex', alignItems:'center', gap:8, justifyContent:'center' }}
-              >
-                📤 Bagikan
-              </button>
-              <button
-                onClick={() => alert('Artikel disimpan! ✅')}
-                style={{ flex:1, padding:14, background:'var(--primary-xlight)', border:'none', borderRadius:'var(--radius-sm)', cursor:'pointer', fontWeight:700, fontSize:14, color:'var(--primary)', display:'flex', alignItems:'center', gap:8, justifyContent:'center' }}
-              >
-                🔖 Simpan
-              </button>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+
+        {/* ── CHART + QUICK ACTIONS: desktop 2-col ── */}
+        {/* Banner peringatan — hanya muncul kalau ada data fallback ke mock */}
+        {isMock && !loading && (
+          <div style={{
+            margin: '16px var(--page-padding) 0',
+            padding: '10px 14px',
+            background: '#FFFBEB',
+            border: '1px solid #FCD34D',
+            borderRadius: 'var(--radius-sm)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12,
+            color: '#92400E',
+            fontWeight: 600,
+          }}>
+            <span>⚠️</span>
+            <span>Koneksi ke server bermasalah. Sebagian data yang ditampilkan mungkin tidak terkini.</span>
+          </div>
+        )}
+        <div style={{ padding:'20px var(--page-padding) 0', display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:16 }}>
+          <div className="card animate-fadeup-1">
+            <div className="flex justify-between items-center" style={{ marginBottom:14 }}>
+              <div>
+                <div className="section-title">Pengeluaran 7 Hari</div>
+                <div style={{ color:'var(--text-muted)', fontSize:12, marginTop:2 }}>Minggu ini</div>
+              </div>
+              <button onClick={() => navigate('/transactions')} style={{ background:'none', border:'none', color:'var(--primary)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                Lihat semua →
+              </button>
+            </div>
+            {loading
+              ? <div className="skeleton" style={{ height:90 }}/>
+              : <ResponsiveContainer width="100%" height={90}>
+                  <BarChart data={data?.chart || mockChartData} barSize={12} margin={{top:4, bottom:0}}>
+                    <defs>
+                      <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#A855F7"/>
+                        <stop offset="100%" stopColor="#7C3AED"/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="day" tick={{ fontSize:11, fill:'#9CA3AF' }} axisLine={false} tickLine={false}/>
+                    <Tooltip
+                      cursor={{ fill:'rgba(124,58,237,0.05)', rx:6 }}
+                      contentStyle={{ borderRadius:10, border:'none', boxShadow:'0 4px 20px rgba(0,0,0,0.1)', fontSize:12 }}
+                      formatter={v => [`Rp ${v.toLocaleString('id-ID')}`, 'Pengeluaran']}
+                    />
+                    <Bar dataKey="amount" fill="url(#barGrad)" radius={[6,6,0,0]}/>
+                  </BarChart>
+                </ResponsiveContainer>
+            }
+          </div>
+        </div>
+
+        {/* ── BOTTOM SECTION: desktop 2-col grid ── */}
+        <div className="dashboard-bottom-grid" style={{ padding:'16px var(--page-padding) 20px' }}>
+
+          {/* Quick Actions */}
+          <div>
+            <div className="section-title" style={{ marginBottom:12 }}>Aksi Cepat</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
+              {[
+                { label:'Catat', emoji:'✏️', path:'/transactions' },
+                { label:'Budget', emoji:'🎯', path:'/budget' },
+                { label:'Simulasi', emoji:'📊', path:'/simulation' },
+                { label:'Edukasi', emoji:'📚', path:'/education' },
+              ].map(a => (
+                <button
+                  key={a.label}
+                  onClick={() => navigate(a.path)}
+                  style={{
+                    background:'white', border:'1px solid var(--border-light)', borderRadius:'var(--radius)',
+                    padding:'14px 6px', display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+                    cursor:'pointer', boxShadow:'var(--shadow-sm)', transition:'all 0.15s', fontSize:'clamp(18px,5vw,24px)'
+                  }}
+                  onMouseDown={e => e.currentTarget.style.transform='scale(0.94)'}
+                  onMouseUp={e => e.currentTarget.style.transform='scale(1)'}
+                  onTouchStart={e => e.currentTarget.style.transform='scale(0.94)'}
+                  onTouchEnd={e => e.currentTarget.style.transform='scale(1)'}
+                >
+                  {a.emoji}
+                  <span style={{ fontSize:'clamp(9px,2.5vw,11px)', fontWeight:700, color:'var(--text-muted)' }}>{a.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Transactions */}
+          <div>
+            <div className="flex justify-between items-center" style={{ marginBottom:12 }}>
+              <span className="section-title">Transaksi Terkini</span>
+              <button onClick={() => navigate('/transactions')} style={{ background:'none', border:'none', color:'var(--primary)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                Lihat semua →
+              </button>
+            </div>
+            {loading
+              ? [1,2,3].map(i => <div key={i} className="skeleton" style={{ height:60, marginBottom:8, borderRadius:12 }}/>)
+              : recentTx.map(tx => <TxRow key={tx.id} tx={tx}/>)
+            }
+          </div>
+
+        </div>
+
+      </div>
+      {showNotif && <NotifPanel onClose={() => setShowNotif(false)} />}
+      <BottomNav/>
     </div>
   )
 }
 
-function ArticleCard({ article, onOpen }) {
+/* helper — CSS var fallback for JSX inline styles */
+function var_or(v) { return v }
+
+function TxRow({ tx }) {
+  const isOut = tx.type === 'keluar'
   return (
-    <div
-      onClick={onOpen}
-      style={{ display:'flex', gap:14, padding:'clamp(12px,3vw,16px)', background:'white', borderRadius:'var(--radius)', marginBottom:12, border:'1px solid var(--border-light)', cursor:'pointer', boxShadow:'var(--shadow-sm)', transition:'box-shadow 0.2s', WebkitTapHighlightColor:'transparent' }}
-    >
-      <div style={{ width:'clamp(52px,14vw,64px)', height:'clamp(52px,14vw,64px)', borderRadius:12, background: article.bg || 'var(--primary-xlight)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'clamp(24px,6vw,30px)', flexShrink:0 }}>
-        {article.image}
+    <div className="flex items-center gap-12" style={{ padding:'11px 0', borderBottom:'1px solid var(--border-light)' }}>
+      <div style={{ width:42, height:42, borderRadius:12, background: isOut ? '#FEF2F2' : '#ECFDF5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>
+        {tx.icon || (isOut ? '📤' : '📥')}
       </div>
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:11, fontWeight:800, color:'var(--primary)', letterSpacing:'0.06em', marginBottom:4 }}>{article.category}</div>
-        <div style={{ fontWeight:700, fontSize:'clamp(13px,3.5vw,14px)', lineHeight:1.35, marginBottom:5 }}>{article.title}</div>
-        <div style={{ color:'var(--text-muted)', fontSize:12, display:'flex', alignItems:'center', gap:8 }}>
-          <span>⏱ {article.readTime} mnt</span>
-          <span>·</span>
-          <span>{article.daysAgo} hari lalu</span>
-          <span style={{ marginLeft:'auto', color:'var(--primary)', fontWeight:700 }}>Baca →</span>
+        <div style={{ fontWeight:700, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{tx.title}</div>
+        <div style={{ color:'var(--text-muted)', fontSize:12, marginTop:1 }}>{tx.category}</div>
+      </div>
+      <div style={{ textAlign:'right', flexShrink:0 }}>
+        <div style={{ fontWeight:800, fontSize:14, color: isOut ? 'var(--danger)' : 'var(--success)' }}>
+          {isOut ? '-' : '+'}Rp {Math.abs(Number(tx.amount)).toLocaleString('id-ID')}
+        </div>
+        <div style={{ color:'var(--text-muted)', fontSize:11, marginTop:1 }}>
+          {new Date(tx.date).toLocaleDateString('id-ID', { day:'numeric', month:'short' })}
         </div>
       </div>
     </div>

@@ -1,134 +1,140 @@
-// src/api/index.js
-import axios from 'axios'
+import React, { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AuthProvider, useAuth, setNotifCallback, setRefetchCallback } from './hooks/useAuth'
+import { ToastProvider } from './hooks/useToast'
+import { NotifProvider, useNotifications } from './hooks/useNotifications'
+import { logoBase64 } from './assets/logo'
+import { getAdminToken, adminAuthApi, removeAdminToken } from './api'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/v1'
+import Onboarding      from './pages/Onboarding'
+import Login           from './pages/Login'
+import Register        from './pages/Register'
+import Dashboard       from './pages/Dashboard'
+import Transactions    from './pages/Transactions'
+import Budget          from './pages/Budget'
+import Education       from './pages/Education'
+import Profile         from './pages/Profile'
+import Simulation      from './pages/Simulation'
+import RatingApp       from './pages/RatingApp'
+import BantuanFAQ      from './pages/BantuanFAQ'
+import Notifikasi      from './pages/Notifikasi'
+import SideNav         from './components/SideNav'
+import AdminRegister   from './pages/AdminRegister'
+import AdminLogin      from './pages/AdminLogin'
+import AdminDashboard  from './pages/AdminDashboard'
 
-// ── Token management (user) ───────────────────────────────────────
-export const getToken    = ()      => localStorage.getItem('fs_token')
-export const setToken    = (token) => localStorage.setItem('fs_token', token)
-export const removeToken = ()      => localStorage.removeItem('fs_token')
-
-// ── Token management (admin — disimpan terpisah) ──────────────────
-export const getAdminToken    = ()      => localStorage.getItem('fs_admin_token')
-export const setAdminToken    = (token) => localStorage.setItem('fs_admin_token', token)
-export const removeAdminToken = ()      => localStorage.removeItem('fs_admin_token')
-
-// ── Axios instance ────────────────────────────────────────────────
-const api = axios.create({
-  baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
-})
-
-// Request interceptor — tambahkan token ke setiap request
-api.interceptors.request.use((config) => {
-  const token = getToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
-
-// Response interceptor — handle 401 global
-api.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    if (error.response?.status === 401) {
-      removeToken()
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login'
-      }
-    }
-    return Promise.reject(
-      new Error(error.response?.data?.message || 'Terjadi kesalahan jaringan')
-    )
-  }
-)
-
-// ── Axios instance (admin) ────────────────────────────────────────
-const adminApi = axios.create({
-  baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
-})
-
-adminApi.interceptors.request.use((config) => {
-  const token = getAdminToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
-
-adminApi.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      removeAdminToken()
-      if (!window.location.pathname.includes('/admin-login')) {
-        window.location.href = '/admin-login'
-      }
-    }
-    return Promise.reject(
-      new Error(error.response?.data?.message || 'Terjadi kesalahan jaringan')
-    )
-  }
-)
-
-// ── Auth API ──────────────────────────────────────────────────────
-export const authApi = {
-  login:          (email, password) => api.post('/auth/login', { email, password }),
-  register:       (data)            => api.post('/auth/register', data),
-  logout:         ()                => api.post('/auth/logout'),
-  getProfile:     ()                => api.get('/auth/me'),
-  updateProfile:  (data)            => api.put('/auth/me', data),
+function Loader() {
+  return (
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: 'var(--bg, #F9FAFB)', zIndex: 9999 }}>
+      <img src={logoBase64} alt="FinSmart" style={{ width: 100, height: 100, objectFit: 'contain', marginBottom: 16, animation: 'pulse 1.5s ease infinite', filter: 'drop-shadow(0 8px 24px rgba(124,58,237,0.3))' }} />
+      <div style={{ color: 'var(--primary)', fontWeight: 800, fontSize: 16, fontFamily: 'var(--font-display)' }}>Memuat...</div>
+    </div>
+  )
 }
 
-// ── Admin Auth API ────────────────────────────────────────────────
-export const adminAuthApi = {
-  register:   (data) => api.post('/auth/admin-register', data),
-  login:      (email, password) => api.post('/auth/login', { email, password }),
-  getProfile: ()     => adminApi.get('/auth/me'),
-  getUsers:   ()     => adminApi.get('/auth/admin/users'),
+// ── Guard: halaman user biasa ───────────────────────────────────────
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <Loader />
+  if (!user) return <Navigate to="/login" replace />
+  return children
 }
 
-// ── Transactions API ──────────────────────────────────────────────
-export const transactionApi = {
-  getAll:  ()         => api.get('/transactions'),
-  getById: (id)       => api.get(`/transactions/${id}`),
-  create:  (data)     => api.post('/transactions', data),
-  update:  (id, data) => api.put(`/transactions/${id}`, data),
-  delete:  (id)       => api.delete(`/transactions/${id}`),
+// ── Guard: halaman publik (redirect jika sudah login) ───────────────
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (user) return <Navigate to="/dashboard" replace />
+  return children
 }
 
-// ── Budget API ────────────────────────────────────────────────────
-export const budgetApi = {
-  getCurrent: ()     => api.get('/budgets/current'),
-  getAll:     ()     => api.get('/budgets'),
-  update:     (data) => api.put('/budgets', data),
+// ── Guard: halaman admin ────────────────────────────────────────────
+// Verifikasi token ke server, bukan hanya cek localStorage.
+// Tiga kemungkinan state:
+//   'loading'  → sedang verifikasi ke server, tampilkan Loader
+//   'valid'    → server konfirmasi token valid, render halaman admin
+//   'invalid'  → token tidak ada / expired / palsu → redirect ke login
+function AdminRoute({ children }) {
+  const [status, setStatus] = React.useState('loading')
+
+  React.useEffect(() => {
+    const token = getAdminToken()
+    // Kalau sama sekali tidak ada token di localStorage, langsung invalid
+    if (!token) { setStatus('invalid'); return }
+
+    // Kalau ada token, tanya server apakah token masih valid
+    adminAuthApi.verifyToken()
+      .then(() => setStatus('valid'))
+      .catch(() => {
+        // Token expired, palsu, atau server menolak → hapus token lama
+        removeAdminToken()
+        setStatus('invalid')
+      })
+  }, [])
+
+  if (status === 'loading') return <Loader />
+  if (status === 'invalid') return <Navigate to="/admin-login" replace />
+  return children
 }
 
-// ── Education / Articles API ──────────────────────────────────────
-export const educationApi = {
-  getArticles: (category = '') =>
-    api.get(`/articles${category ? '?category=' + category : ''}`),
-  getArticle:  (id) => api.get(`/articles/${id}`),
+// ── Bridge notif ─────────────────────────────────────────────────────
+function NotifBridge() {
+  const { addNotif, refetch } = useNotifications()
+  useEffect(() => {
+    setNotifCallback(addNotif)
+    setRefetchCallback(refetch)
+    return () => { setNotifCallback(null); setRefetchCallback(null) }
+  }, [addNotif, refetch])
+  return null
 }
 
-// ── Dashboard API ─────────────────────────────────────────────────
-export const dashboardApi = {
-  getSummary:   () => api.get('/dashboard/summary'),
-  getChartData: () => api.get('/dashboard/chart'),
+function AppRoutes() {
+  const { user } = useAuth()
+  const location = useLocation()
+  const showSidebar = user && !['/login', '/register', '/'].includes(location.pathname)
+
+  return (
+    <>
+      <NotifBridge />
+      {showSidebar && <SideNav />}
+      <Routes>
+        {/* Publik */}
+        <Route path="/"         element={<PublicRoute><Onboarding /></PublicRoute>} />
+        <Route path="/login"    element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+
+        {/* User terautentikasi */}
+        <Route path="/dashboard"    element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+        <Route path="/budget"       element={<ProtectedRoute><Budget /></ProtectedRoute>} />
+        <Route path="/education"    element={<ProtectedRoute><Education /></ProtectedRoute>} />
+        <Route path="/profile"      element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/simulation"   element={<ProtectedRoute><Simulation /></ProtectedRoute>} />
+        <Route path="/rating"       element={<ProtectedRoute><RatingApp /></ProtectedRoute>} />
+        <Route path="/bantuan"      element={<ProtectedRoute><BantuanFAQ /></ProtectedRoute>} />
+        <Route path="/notifikasi"   element={<ProtectedRoute><Notifikasi /></ProtectedRoute>} />
+
+        {/* Admin */}
+        <Route path="/admin-register" element={<AdminRegister />} />
+        <Route path="/admin-login"    element={<AdminLogin />} />
+        <Route path="/admin"          element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
+  )
 }
 
-// ── Notifications API ─────────────────────────────────────────────
-export const notifApiRemote = {
-  getAll:    ()     => api.get('/notifications'),
-  create:    (data) => api.post('/notifications', data),
-  markRead:  (id)   => api.put(`/notifications/${id}/read`),
-  readAll:   ()     => api.put('/notifications/read-all'),
-  deleteAll: ()     => api.delete('/notifications'),
+export default function App() {
+  return (
+    <BrowserRouter>
+      <NotifProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
+        </AuthProvider>
+      </NotifProvider>
+    </BrowserRouter>
+  )
 }
-
-// ── Ratings API ───────────────────────────────────────────────────
-export const ratingApi = {
-  submit: (score, comment) => api.post('/ratings', { score, comment }),
-}
-
-export default api
